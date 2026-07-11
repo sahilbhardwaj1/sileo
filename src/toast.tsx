@@ -146,7 +146,10 @@ const createToast = (options: InternalSileoOptions) => {
 	} else {
 		store.update((p) => [...p.filter((t) => t.id !== id), item]);
 	}
-	return { id, duration: merged.duration ?? DEFAULT_DURATION };
+	return {
+		id,
+		duration: merged.duration === undefined ? DEFAULT_DURATION : merged.duration,
+	};
 };
 
 const updateToast = (id: string, options: InternalSileoOptions) => {
@@ -261,7 +264,9 @@ export function Toaster({
 			const key = timeoutKey(item);
 			if (timersRef.current.has(key)) continue;
 
-			const dur = item.duration ?? DEFAULT_DURATION;
+			// `null` intentionally means "persistent". Use an explicit undefined
+			// fallback so user-created persistent toasts are not auto-dismissed.
+			const dur = item.duration === undefined ? DEFAULT_DURATION : item.duration;
 			if (dur === null || dur <= 0) continue;
 
 			timersRef.current.set(

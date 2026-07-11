@@ -6,6 +6,7 @@ import {
 	type TransitionEventHandler,
 	useCallback,
 	useEffect,
+	useId,
 	useLayoutEffect,
 	useMemo,
 	useRef,
@@ -32,6 +33,8 @@ const PILL_PADDING = 10;
 const MIN_EXPAND_RATIO = 2.25;
 const SWAP_COLLAPSE_MS = 200;
 const HEADER_EXIT_MS = 150;
+
+const SVG_ID_SAFE = /[^a-zA-Z0-9_-]/g;
 
 type State = SileoState;
 
@@ -155,7 +158,14 @@ export const Sileo = memo(function Sileo({
 		: (canExpand ?? (!interruptKey || interruptKey === id));
 
 	const headerKey = `${view.state}-${view.title}`;
-	const filterId = `sileo-gooey-${id}`;
+	const reactId = useId();
+	// Keep SVG filter ids derived from React-owned ids instead of public toast
+	// ids. Toast ids can be supplied by consumers, so using them directly in
+	// `url(#...)` references risks broken selectors or cross-toast collisions.
+	const filterId = useMemo(
+		() => `sileo-gooey-${reactId.replace(SVG_ID_SAFE, "-")}`,
+		[reactId],
+	);
 	const resolvedRoundness = Math.max(0, roundness ?? DEFAULT_ROUNDNESS);
 	const blur = resolvedRoundness * BLUR_RATIO;
 
@@ -456,16 +466,29 @@ export const Sileo = memo(function Sileo({
 			const dy = e.clientY - pointerStartRef.current;
 			pointerStartRef.current = null;
 			el.style.transform = "";
+			if (el.hasPointerCapture(e.pointerId)) {
+				el.releasePointerCapture(e.pointerId);
+			}
 			if (Math.abs(dy) > SWIPE_DISMISS) {
 				onDismissRef.current?.();
 			}
 		};
 
+		const onCancel = (e: PointerEvent) => {
+			pointerStartRef.current = null;
+			el.style.transform = "";
+			if (el.hasPointerCapture(e.pointerId)) {
+				el.releasePointerCapture(e.pointerId);
+			}
+		};
+
 		el.addEventListener("pointermove", onMove, { passive: true });
 		el.addEventListener("pointerup", onUp, { passive: true });
+		el.addEventListener("pointercancel", onCancel, { passive: true });
 		return () => {
 			el.removeEventListener("pointermove", onMove);
 			el.removeEventListener("pointerup", onUp);
+			el.removeEventListener("pointercancel", onCancel);
 		};
 	}, []);
 
