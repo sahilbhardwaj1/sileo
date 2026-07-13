@@ -13,11 +13,11 @@ npm i sileo
 
 ## Getting Started
 
-Render one `Toaster` near the root of your app, then call `push` or `sileo`
-from anywhere in your client-side code.
+Render one `Toaster` near the root of your app, then call `sileo` from anywhere
+in your client-side code.
 
 ```tsx
-import { push, Toaster } from "sileo";
+import { sileo, Toaster } from "sileo";
 
 export default function App() {
   return (
@@ -30,7 +30,7 @@ export default function App() {
 ```
 
 ```tsx
-push.success({ title: "Saved" });
+sileo.success({ title: "Saved" });
 ```
 
 For detailed docs, visit https://sileo.aaryan.design.
@@ -38,45 +38,64 @@ For detailed docs, visit https://sileo.aaryan.design.
 ## Basic Toasts
 
 ```tsx
-push.show({ title: "Default toast" });
-push.success({ title: "Saved" });
-push.error({ title: "Something went wrong" });
-push.warning({ title: "Check this first" });
-push.info({ title: "Heads up" });
+sileo.show({ title: "Default toast" });
+sileo.success({ title: "Saved" });
+sileo.error({ title: "Something went wrong" });
+sileo.warning({ title: "Check this first" });
+sileo.info({ title: "Heads up" });
 ```
 
-Add details, custom duration, or actions when you need them.
+## Loading Toasts
+
+Use `sileo.loading` when an async action starts. It returns a toast id, so you can
+update the same toast after the action finishes.
 
 ```tsx
-push.action({
-  title: "New message",
-  description: "Aaryan sent you a message.",
-  button: {
-    title: "Open chat",
-    onClick: () => router.push("/chat/123"),
-  },
+const id = sileo.loading({ title: "Uploading" });
+
+try {
+  await uploadFile();
+
+  sileo.update(id, {
+    title: "Uploaded",
+    description: "Your file is ready.",
+    state: "success",
+  });
+} catch {
+  sileo.update(id, {
+    title: "Upload failed",
+    description: "Please try again.",
+    state: "error",
+  });
+}
+```
+
+Loading toasts are persistent by default. Pass a `duration` if you want the
+loading toast to auto-dismiss.
+
+```tsx
+sileo.loading({
+  title: "Syncing...",
+  duration: 8000,
 });
 ```
 
-## Async Toasts
+## Promise Toasts
 
-### Automatic promise tracking
-
-Use `push.promise` when you already have a promise and want Sileo to update the
-same toast when it resolves or rejects.
+If you prefer Sileo to watch a promise directly, use `sileo.promise`.
 
 ```tsx
-push.promise(fetchData(), {
+sileo.promise(fetchData(), {
   loading: "Loading...",
   success: "Done!",
   error: "Failed",
 });
 ```
 
-You can also return full toast options from success/error callbacks.
+You can return full toast options from callbacks for richer messages.
 
 ```tsx
-push.promise(fetchUsers(), {
+sileo.promise(fetchUsers(), {
   loading: "Loading users...",
   success: (users) => ({
     title: "Users loaded",
@@ -86,49 +105,6 @@ push.promise(fetchUsers(), {
     title: "Could not load users",
     description: error instanceof Error ? error.message : "Please try again.",
   }),
-});
-```
-
-### Manual resolve/reject flow
-
-Use the manual controller when a `try`/`catch` flow is clearer. This matches the
-simple style you asked for: create the loading toast first, then resolve or
-reject it later.
-
-```tsx
-const notification = push.promise("We're sending your message, hold on...");
-
-try {
-  const { chatId } = await sendMsg(user.id, message);
-
-  notification.resolve({
-    message: `Your message has been successfully sent to ${user.name}.`,
-    props: {
-      chatUrl: `/chat/${chatId}`,
-    },
-  });
-} catch {
-  notification.reject("Message failed to send.");
-}
-```
-
-The controller also exposes `notification.update(...)` for intermediate states
-and `notification.dismiss()` when you want to close it yourself.
-
-## Updating Toasts
-
-Use `push.loading` plus `push.update` when you want to keep full control with a
-stable toast id.
-
-```tsx
-const id = push.loading({ title: "Uploading" });
-
-await uploadFile();
-
-push.update(id, {
-  title: "Uploaded",
-  description: "Your file is ready.",
-  state: "success",
 });
 ```
 

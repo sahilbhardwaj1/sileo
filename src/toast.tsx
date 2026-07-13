@@ -164,23 +164,6 @@ type SileoPromiseMessage<T = unknown> =
 	| SileoOptions
 	| ((value: T) => string | SileoOptions);
 
-type SileoManualPromiseValue =
-	| string
-	| (SileoOptions & {
-			/** Alias for title, matching the manual promise API examples. */
-			message?: string;
-			/** Extra app data callers may keep alongside their notification result. */
-			props?: Record<string, unknown>;
-		});
-
-export interface SileoPromiseController {
-	id: string;
-	update: (value: SileoManualPromiseValue) => void;
-	resolve: (value: SileoManualPromiseValue) => void;
-	reject: (value: SileoManualPromiseValue) => void;
-	dismiss: () => void;
-}
-
 export interface SileoPromiseOptions<T = unknown> {
 	loading: string | Pick<SileoOptions, "title" | "icon">;
 	success: SileoPromiseMessage<T>;
@@ -194,86 +177,11 @@ export interface SileoPromiseOptions<T = unknown> {
 const toToastOptions = (value: string | SileoOptions): SileoOptions =>
 	typeof value === "string" ? { title: value } : value;
 
-const toManualPromiseOptions = (
-	value: SileoManualPromiseValue,
-): SileoOptions => {
-	if (typeof value === "string") return { title: value };
-	const { message, props: _props, ...options } = value;
-	return {
-		...options,
-		title: options.title ?? message,
-	};
-};
-
 const resolvePromiseOptions = <T,>(
 	value: SileoPromiseMessage<T>,
 	payload: T,
 ): SileoOptions =>
 	toToastOptions(typeof value === "function" ? value(payload) : value);
-
-function createManualPromiseToast(
-	loading: string | SileoOptions,
-): SileoPromiseController {
-	const { id } = createToast({
-		...toToastOptions(loading),
-		state: "loading",
-		duration: null,
-	});
-
-	return {
-		id,
-		update: (value) => updateToast(id, { ...toManualPromiseOptions(value), id }),
-		resolve: (value) =>
-			updateToast(id, { ...toManualPromiseOptions(value), state: "success", id }),
-		reject: (value) =>
-			updateToast(id, { ...toManualPromiseOptions(value), state: "error", id }),
-		dismiss: () => dismissToast(id),
-	};
-}
-
-function watchPromiseToast<T>(
-	promise: Promise<T> | (() => Promise<T>),
-	opts: SileoPromiseOptions<T>,
-): Promise<T> {
-	const { id } = createToast({
-		...toToastOptions(opts.loading),
-		state: "loading",
-		duration: null,
-		position: opts.position,
-	});
-
-	const p = typeof promise === "function" ? promise() : promise;
-
-	p.then((data) => {
-		if (opts.action) {
-			const actionOpts = resolvePromiseOptions(opts.action, data);
-			updateToast(id, { ...actionOpts, state: "action", id });
-		} else {
-			const successOpts = resolvePromiseOptions(opts.success, data);
-			updateToast(id, { ...successOpts, state: "success", id });
-		}
-	}).catch((err) => {
-		const errorOpts = resolvePromiseOptions(opts.error, err);
-		updateToast(id, { ...errorOpts, state: "error", id });
-	});
-
-	return p;
-}
-
-function promiseToast(loading: string | SileoOptions): SileoPromiseController;
-function promiseToast<T>(
-	promise: Promise<T> | (() => Promise<T>),
-	opts: SileoPromiseOptions<T>,
-): Promise<T>;
-function promiseToast<T>(
-	value: string | SileoOptions | Promise<T> | (() => Promise<T>),
-	opts?: SileoPromiseOptions<T>,
-): SileoPromiseController | Promise<T> {
-	if (opts) {
-		return watchPromiseToast(value as Promise<T> | (() => Promise<T>), opts);
-	}
-	return createManualPromiseToast(value as string | SileoOptions);
-}
 
 export const sileo = {
 	show: (opts: SileoOptions) => createToast(opts).id,
@@ -293,7 +201,34 @@ export const sileo = {
 	update: (id: string, opts: SileoOptions) =>
 		updateToast(id, { ...opts, id: opts.id ?? id }),
 
-	promise: promiseToast,
+	promise: <T,>(
+		promise: Promise<T> | (() => Promise<T>),
+		opts: SileoPromiseOptions<T>,
+	): Promise<T> => {
+		const { id } = createToast({
+			...toToastOptions(opts.loading),
+			state: "loading",
+			duration: null,
+			position: opts.position,
+		});
+
+		const p = typeof promise === "function" ? promise() : promise;
+
+		p.then((data) => {
+			if (opts.action) {
+				const actionOpts = resolvePromiseOptions(opts.action, data);
+				updateToast(id, { ...actionOpts, state: "action", id });
+			} else {
+				const successOpts = resolvePromiseOptions(opts.success, data);
+				updateToast(id, { ...successOpts, state: "success", id });
+			}
+		}).catch((err) => {
+			const errorOpts = resolvePromiseOptions(opts.error, err);
+			updateToast(id, { ...errorOpts, state: "error", id });
+		});
+
+		return p;
+	},
 
 	dismiss: dismissToast,
 
@@ -304,8 +239,6 @@ export const sileo = {
 };
 
 /* ------------------------------ Toaster Component ------------------------- */
-
-export const push = sileo;
 
 export function Toaster({
 	children,
