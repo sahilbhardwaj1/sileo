@@ -136,7 +136,7 @@ const createToast = (options: InternalSileoOptions) => {
 	const live = store.toasts.filter((t) => !t.exiting);
 	const merged = mergeOptions(options);
 
-	const id = merged.id ?? "sileo-default";
+	const id = merged.id ?? generateId();
 	const prev = live.find((t) => t.id === id);
 	const item = buildSileoItem(merged, id, prev?.position);
 
@@ -159,13 +159,29 @@ const updateToast = (id: string, options: InternalSileoOptions) => {
 	store.update((prev) => prev.map((t) => (t.id === id ? item : t)));
 };
 
+type SileoPromiseMessage<T = unknown> =
+	| string
+	| SileoOptions
+	| ((value: T) => string | SileoOptions);
+
 export interface SileoPromiseOptions<T = unknown> {
-	loading: Pick<SileoOptions, "title" | "icon">;
-	success: SileoOptions | ((data: T) => SileoOptions);
-	error: SileoOptions | ((err: unknown) => SileoOptions);
-	action?: SileoOptions | ((data: T) => SileoOptions);
+	loading: string | Pick<SileoOptions, "title" | "icon">;
+	success: SileoPromiseMessage<T>;
+	error: string | SileoOptions | ((err: unknown) => string | SileoOptions);
+	action?: SileoPromiseMessage<T>;
 	position?: SileoPosition;
 }
+
+// Promise toasts should be ergonomic for the common case: strings become
+// toast titles, while objects keep the full customization surface.
+const toToastOptions = (value: string | SileoOptions): SileoOptions =>
+	typeof value === "string" ? { title: value } : value;
+
+const resolvePromiseOptions = <T,>(
+	value: SileoPromiseMessage<T>,
+	payload: T,
+): SileoOptions =>
+	toToastOptions(typeof value === "function" ? value(payload) : value);
 
 export const sileo = {
 	show: (opts: SileoOptions) => createToast(opts).id,
@@ -190,7 +206,7 @@ export const sileo = {
 		opts: SileoPromiseOptions<T>,
 	): Promise<T> => {
 		const { id } = createToast({
-			...opts.loading,
+			...toToastOptions(opts.loading),
 			state: "loading",
 			duration: null,
 			position: opts.position,
@@ -200,19 +216,14 @@ export const sileo = {
 
 		p.then((data) => {
 			if (opts.action) {
-				const actionOpts =
-					typeof opts.action === "function" ? opts.action(data) : opts.action;
+				const actionOpts = resolvePromiseOptions(opts.action, data);
 				updateToast(id, { ...actionOpts, state: "action", id });
 			} else {
-				const successOpts =
-					typeof opts.success === "function"
-						? opts.success(data)
-						: opts.success;
+				const successOpts = resolvePromiseOptions(opts.success, data);
 				updateToast(id, { ...successOpts, state: "success", id });
 			}
 		}).catch((err) => {
-			const errorOpts =
-				typeof opts.error === "function" ? opts.error(err) : opts.error;
+			const errorOpts = resolvePromiseOptions(opts.error, err);
 			updateToast(id, { ...errorOpts, state: "error", id });
 		});
 

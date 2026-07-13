@@ -34,7 +34,7 @@ export type SileoPosition = (typeof SILEO_POSITIONS)[number];
 export interface SileoOptions {
 	/**
 	 * Stable identifier used to replace/update an existing toast instead of
-	 * creating a new one. If omitted, Sileo uses a shared default toast id.
+	 * creating a new one. If omitted, Sileo creates a unique id for the toast.
 	 */
 	id?: string;
 	state?: SileoState;

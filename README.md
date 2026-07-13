@@ -28,6 +28,34 @@ export default function App() {
 
 For detailed docs, click here: https://sileo.aaryan.design
 
+
+### Async Toasts
+
+For async work, use simple strings when you only need a title. Sileo keeps the
+loading toast open, then updates the same toast when the promise resolves or
+rejects.
+
+```tsx
+sileo.promise(fetchData(), {
+  loading: "Loading...",
+  success: "Done!",
+  error: "Failed",
+});
+```
+
+Use objects only when you need extra details, such as a description or button.
+
+```tsx
+sileo.promise(fetchData(), {
+  loading: "Loading...",
+  success: (data) => ({
+    title: "Done!",
+    description: `${data.length} items loaded.`,
+  }),
+  error: { title: "Failed", description: "Please try again." },
+});
+```
+
 ### Updating Toasts
 
 Use a stable `id` when you want to replace a toast in-place, or call
