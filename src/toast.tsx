@@ -13,7 +13,6 @@ import {
 	SILEO_POSITIONS,
 	type SileoOptions,
 	type SileoPosition,
-	type SileoState,
 } from "./types";
 
 /* -------------------------------- Constants ------------------------------- */
@@ -30,10 +29,7 @@ const expandDir = (pos: SileoPosition) =>
 
 /* ---------------------------------- Types --------------------------------- */
 
-interface InternalSileoOptions extends SileoOptions {
-	id?: string;
-	state?: SileoState;
-}
+type InternalSileoOptions = SileoOptions;
 
 interface SileoItem extends InternalSileoOptions {
 	id: string;
@@ -121,7 +117,10 @@ const buildSileoItem = (
 	id: string,
 	fallbackPosition?: SileoPosition,
 ): SileoItem => {
-	const duration = merged.duration ?? DEFAULT_DURATION;
+	// Preserve `null` as the public "do not auto-dismiss" value. Only an
+	// omitted duration should fall back to the default timeout.
+	const duration =
+		merged.duration === undefined ? DEFAULT_DURATION : merged.duration;
 	const auto = resolveAutopilot(merged, duration);
 	return {
 		...merged,
@@ -172,11 +171,19 @@ export const sileo = {
 	show: (opts: SileoOptions) => createToast(opts).id,
 	success: (opts: SileoOptions) =>
 		createToast({ ...opts, state: "success" }).id,
+	loading: (opts: SileoOptions) =>
+		createToast({
+			...opts,
+			state: "loading",
+			duration: opts.duration === undefined ? null : opts.duration,
+		}).id,
 	error: (opts: SileoOptions) => createToast({ ...opts, state: "error" }).id,
 	warning: (opts: SileoOptions) =>
 		createToast({ ...opts, state: "warning" }).id,
 	info: (opts: SileoOptions) => createToast({ ...opts, state: "info" }).id,
 	action: (opts: SileoOptions) => createToast({ ...opts, state: "action" }).id,
+	update: (id: string, opts: SileoOptions) =>
+		updateToast(id, { ...opts, id: opts.id ?? id }),
 
 	promise: <T,>(
 		promise: Promise<T> | (() => Promise<T>),

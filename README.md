@@ -27,3 +27,20 @@ export default function App() {
 ```
 
 For detailed docs, click here: https://sileo.aaryan.design
+
+### Updating Toasts
+
+Use a stable `id` when you want to replace a toast in-place, or call
+`sileo.update(id, options)` when a background task changes state.
+
+```tsx
+const id = sileo.loading({ title: "Uploading" });
+
+await uploadFile();
+
+sileo.update(id, {
+  title: "Uploaded",
+  description: "Your file is ready.",
+  state: "success",
+});
+```
