@@ -14,7 +14,7 @@ npm i sileo
 ### Getting Started
 
 ```tsx
-import { sileo, Toaster } from "sileo";
+import { push, sileo, Toaster } from "sileo";
 
 export default function App() {
   return (
@@ -41,6 +41,27 @@ sileo.promise(fetchData(), {
   success: "Done!",
   error: "Failed",
 });
+```
+
+
+You can also manually resolve or reject a loading toast when a `try`/`catch`
+flow reads better than passing the promise upfront.
+
+```tsx
+const notification = push.promise("We're sending your message, hold on...");
+
+try {
+  const { chatId } = await sendMsg(user.id, message);
+
+  notification.resolve({
+    message: `Your message has been successfully sent to ${user.name}.`,
+    props: {
+      chatUrl: `/chat/${chatId}`,
+    },
+  });
+} catch {
+  notification.reject("Message failed to send.");
+}
 ```
 
 Use objects only when you need extra details, such as a description or button.

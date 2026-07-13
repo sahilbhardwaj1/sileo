@@ -2,7 +2,8 @@
 
 import "./styles.css";
 
-export { sileo, Toaster } from "./toast";
+export { push, sileo, Toaster } from "./toast";
+export type { SileoPromiseController, SileoPromiseOptions } from "./toast";
 export type {
 	SileoButton,
 	SileoOptions,
